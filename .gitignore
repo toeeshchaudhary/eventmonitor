@@ -22,3 +22,5 @@ collector/collector.json
 
 # scratch
 _*.ps1
+collector/*.log
+collector/*.log.err
