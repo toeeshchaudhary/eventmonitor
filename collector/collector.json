@@ -1,0 +1,12 @@
+{
+  "host": "0.0.0.0",
+  "port": 8787,
+  "dataDir": "./data",
+  "adminToken": "CHANGE-ME-admin-token",
+  "retentionDays": 7,
+  "maxBatchBytes": 8388608,
+  "machines": {
+    "LAB-PC-01": { "token": "CHANGE-ME-pc01", "label": "Lab PC 1" },
+    "LAB-PC-02": { "token": "CHANGE-ME-pc02", "label": "Lab PC 2" }
+  }
+}

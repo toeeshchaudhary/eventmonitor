@@ -1,0 +1,18 @@
+# runtime data - never commit evidence, tokens or logs
+data/
+collector/data/
+Evidence-*/
+*.log
+
+# test scratch
+_e2e*/
+_build_check.js
+
+# windows reserved-name artifact from bun build output
+nul
+
+# editor/os
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

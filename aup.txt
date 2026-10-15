@@ -1,0 +1,38 @@
+EVENT MONITORING NOTICE
+=======================
+
+This machine is owned and operated by the event organisers. It is monitored.
+
+WHAT IS RECORDED
+  - which application and window is in the foreground, and when
+  - when applications start and stop
+  - periodic screenshots of the screen
+  - typing ACTIVITY (how much you type, and in which window)
+
+BY DEFAULT, WHAT YOU TYPE IS NOT RECORDED AS TEXT.
+If the organisers have enabled character capture for a specific task, that
+task's instructions will say so explicitly, on paper, before you start.
+
+NOT RECORDED
+  Windows matching the exclusion list (password managers, banking, sign-in
+  screens) are suppressed: no screenshots, no typing activity, no content.
+
+WHAT WE DO WITH IT
+  Used only to verify that submitted work was produced by the person who
+  submitted it, and to resolve disputes during the event. Not used for
+  advertising, not sold, not shared with anyone outside the organising team.
+
+RETENTION
+  Deleted automatically after the retention window configured for this event.
+  Deleting on request: speak to the organiser on duty.
+
+SENSITIVE INPUT
+  Do not type personal passwords or banking details on this machine.
+  Ask staff for an unmonitored device or your own phone if you need to.
+
+CONSENT
+  By using this machine you acknowledge the above. You may decline: ask the
+  organiser on duty and an unmonitored device will be provided. Declining
+  does not affect your participation in the event.
+
+Organiser: ______________________   AUP version: HASH12-AUP-v1

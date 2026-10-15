@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EVENTMONITOR</title>
+<style>
+  :root {
+    --bg: #0b0b0b; --fg: #f2f2f2; --dim: #8a8a8a; --rule: #2a2a2a;
+    --panel: #121212; --rec: #ff3b30;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 12px/1.45 var(--mono);
+    display: flex; flex-direction: column;
+  }
+  header {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 16px 12px;
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 { font-size: 15px; letter-spacing: .22em; text-transform: uppercase; margin: 0; font-weight: 600; }
+  .brand .rec { color: var(--rec); font-size: 11px; letter-spacing: .18em; }
+  .brand .sub { color: var(--dim); font-size: 11px; letter-spacing: .1em; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; justify-content: flex-end; }
+  label.f { display: flex; flex-direction: column; gap: 4px; }
+  label.f span { color: var(--dim); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }
+  select, input, button {
+    background: var(--panel); color: var(--fg); border: 1px solid var(--rule);
+    font: 12px var(--mono); padding: 5px 7px; border-radius: 0; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--fg); }
+  button { cursor: pointer; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
+  button:hover { background: #1c1c1c; border-color: var(--dim); }
+  button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+  #gate { padding: 48px 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  #gate p { color: var(--dim); margin: 0; max-width: 52ch; }
+
+  main { flex: 1; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); min-height: 0; }
+  section { min-height: 0; display: flex; flex-direction: column; }
+  section + section { border-left: 1px solid var(--rule); }
+  h2 {
+    margin: 0; padding: 9px 14px; font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--dim); border-bottom: 1px solid var(--rule); font-weight: 500;
+    display: flex; justify-content: space-between; gap: 10px;
+  }
+  .scroll { overflow: auto; flex: 1; }
+
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 4px 10px; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
+  tr:hover td { background: #161616; }
+  .t-time { color: var(--dim); white-space: nowrap; width: 78px; }
+  .t-type { width: 74px; }
+  .tag {
+    border: 1px solid var(--rule); color: var(--dim); padding: 0 5px;
+    font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+  }
+  .tag.window { color: #d7d7d7; border-color: #3a3a3a; }
+  .tag.input  { color: #fff; border-color: #5a5a5a; }
+  .tag.proc   { color: #b9b9b9; }
+  .tag.shot   { color: #9c9c9c; border-style: dashed; }
+  .tag.redacted { color: #6f6f6f; border-color: #333; }
+  .t-main { }
+  .t-proc { color: #cfcfcf; }
+  .t-title { color: var(--dim); }
+  .t-meta { color: #6f6f6f; font-size: 11px; text-align: right; white-space: nowrap; width: 110px; }
+  .chars { color: #dcdcdc; background: #1a1a1a; padding: 1px 4px; display: inline-block; max-width: 100%;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+  .row-session td { background: #151515; color: var(--dim); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+  .sess-bar { color: var(--fg); }
+
+  .shots { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .shot { border: 1px solid var(--rule); background: var(--panel); }
+  .shot img { width: 100%; display: block; }
+  .shot .cap { padding: 4px 6px; color: var(--dim); font-size: 10px; border-top: 1px solid var(--rule);
+               display: flex; justify-content: space-between; gap: 6px; }
+  .empty { padding: 20px 14px; color: #5c5c5c; }
+  footer { border-top: 1px solid var(--rule); padding: 7px 14px; color: var(--dim); font-size: 10.5px;
+           display: flex; gap: 16px; flex-wrap: wrap; }
+  footer b { color: var(--fg); font-weight: 500; }
+  @media (max-width: 1080px) { main { grid-template-columns: 1fr; } section + section { border-left: 0; border-top: 1px solid var(--rule); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>EventMonitor</h1>
+    <span class="rec">&#9679; verification console</span>
+    <span class="sub" id="statusline">idle</span>
+  </div>
+  <div class="controls" id="controls" style="display:none">
+    <label class="f"><span>machine</span><select id="machine"></select></label>
+    <label class="f"><span>type</span>
+      <select id="type">
+        <option value="">all</option>
+        <option value="window">window</option>
+        <option value="input">input</option>
+        <option value="proc">proc</option>
+        <option value="shot">shot</option>
+        <option value="redacted">redacted</option>
+      </select>
+    </label>
+    <label class="f"><span>from</span><input id="from" type="datetime-local" style="width:170px"></label>
+    <label class="f"><span>limit</span><select id="limit">
+      <option>250</option><option selected>500</option><option>1500</option><option>5000</option>
+    </select></label>
+    <button id="autos">auto</button>
+    <button id="refresh">refresh</button>
+    <button id="export">export</button>
+    <button id="signout">sign out</button>
+  </div>
+</header>
+
+<div id="gate">
+  <p><b>Admin token required.</b> This console reads recorded session evidence. It is not a public page &mdash; do not share the URL or token with attendees.</p>
+  <label class="f"><span>admin token</span><input id="token" type="password" style="width:340px" autocomplete="off"></label>
+  <button id="connect">connect</button>
+  <p id="gateerr" style="color:var(--rec)"></p>
+</div>
+
+<main id="main" style="display:none">
+  <section>
+    <h2><span>timeline</span><span id="count">0 events</span></h2>
+    <div class="scroll"><table><tbody id="timeline"></tbody></table></div>
+  </section>
+  <section>
+    <h2><span>screenshots</span><span id="shotcount">0</span></h2>
+    <div class="scroll"><div class="shots" id="shots"></div></div>
+  </section>
+</main>
+
+<footer id="foot" style="display:none">
+  <span>range <b id="f-range">&mdash;</b></span>
+  <span>events <b id="f-events">0</b></span>
+  <span>window <b id="f-window">0</b></span>
+  <span>input <b id="f-input">0</b></span>
+  <span>shots <b id="f-shots">0</b></span>
+  <span>redacted <b id="f-redacted">0</b></span>
+</footer>
+
+<script>
+"use strict";
+var S = { token: "", machine: "", type: "", from: "", limit: 500, timer: null, machines: {} };
+
+var $ = function (id) { return document.getElementById(id); };
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fmtTime(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return iso;
+  var p = function (n) { return String(n).padStart(2, "0"); };
+  return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+}
+
+function fmtDay(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return "";
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function q(params) {
+  var u = new URLSearchParams();
+  Object.keys(params).forEach(function (k) { if (params[k]) u.set(k, params[k]); });
+  u.set("token", S.token);
+  return u.toString();
+}
+
+function api(path, params) {
+  return fetch(path + "?" + q(params || {})).then(function (r) {
+    if (r.status === 401) throw new Error("unauthorized");
+    if (!r.ok) throw new Error("http " + r.status);
+    return r.json();
+  });
+}
+
+function setStatus(text) { $("statusline").textContent = text; }
+
+function loadMachines() {
+  return api("/api/machines").then(function (d) {
+    var counts = {};
+    (d.items || []).forEach(function (r) { counts[r.id] = r.n_events; });
+    S.machines = {};
+    var sel = $("machine");
+    sel.innerHTML = '<option value="">all machines</option>';
+    (d.enrolled || []).forEach(function (m) {
+      var row = (d.items || []).filter(function (r) { return r.id === m.id; })[0] || {};
+      var st = m.station || row.station || "";
+      var at = m.attendee || row.attendee || "";
+      S.machines[m.id] = { station: st, attendee: at };
+      var tag = [];
+      if (st) tag.push(st);
+      if (at) tag.push(at);
+      var o = document.createElement("option");
+      o.value = m.id;
+      o.textContent = m.id + (tag.length ? " \u2014 " + tag.join(" / ") : "") + "  (" + (counts[m.id] || 0) + ")";
+      sel.appendChild(o);
+    });
+  });
+}
+
+function render(events) {
+  var tb = $("timeline");
+  var shots = $("shots");
+  tb.innerHTML = "";
+  shots.innerHTML = "";
+
+  var counts = { window: 0, input: 0, shot: 0, redacted: 0, proc: 0, agent: 0 };
+  var lastSid = null, lastDay = null, keyTotal = 0;
+
+  events.forEach(function (e) {
+    counts[e.type] = (counts[e.type] || 0) + 1;
+
+    var day = fmtDay(e.ts);
+    if (day !== lastDay) {
+      lastDay = day;
+      var dr = document.createElement("tr");
+      dr.className = "row-session";
+      dr.innerHTML = '<td colspan="4">' + esc(day) + "</td>";
+      tb.appendChild(dr);
+    }
+    if (e.sid && e.sid !== lastSid) {
+      lastSid = e.sid;
+      var sr = document.createElement("tr");
+      sr.className = "row-session";
+      sr.innerHTML = '<td colspan="4">session <span class="sess-bar">' + esc(e.sid) + "</span></td>";
+      tb.appendChild(sr);
+    }
+
+    var d = e.data || {};
+    var main = "";
+    if (e.type === "input") {
+      main = '<span class="t-proc">' + esc(e.process) + "</span>";
+      if (d.chars) main += ' <span class="chars">' + esc(d.chars) + "</span>";
+    } else if (e.type === "redacted") {
+      main = '<span class="t-proc">' + esc(e.process) + '</span> <span class="t-title">content suppressed</span>';
+    } else if (e.type === "proc") {
+      main = '<span class="t-proc">' + esc(d.process || e.process) + "</span> <span class=\"t-title\">" + esc(d.action || "") + "</span>";
+    } else if (e.type === "agent") {
+      if (d.action === "identity") {
+        main = '<span class="t-proc">identity changed</span> <span class="t-title">' +
+               esc(d.from || "") + " \u2192 " + esc(d.to || "") + "</span>";
+      } else {
+        main = '<span class="t-proc">agent ' + esc(d.action || "") + '</span> <span class="t-title">' + esc(d.mode || "") + "</span>";
+      }
+    } else if (e.type === "shot") {
+      main = '<span class="t-proc">' + esc(e.process) + "</span> <span class=\"t-title\">screenshot captured</span>";
+    } else {
+      main = '<span class="t-proc">' + esc(e.process) + '</span> <span class="t-title">' + esc(e.title) + "</span>";
+    }
+
+    var meta = "";
+    if (e.type === "input") { keyTotal += d.keys || 0; meta = (d.keys || 0) + " keys"; }
+    if (e.type === "window" && d.state === "idle") meta = "idle";
+    // when looking at every machine at once, the machine is the useful column
+    if (!S.machine && e.machine) meta = e.machine + (meta ? " \u00b7 " + meta : "");
+
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="t-time">' + esc(fmtTime(e.ts)) + "</td>" +
+      '<td class="t-type"><span class="tag ' + esc(e.type) + '">' + esc(e.type) + "</span></td>" +
+      '<td class="t-main">' + main + "</td>" +
+      '<td class="t-meta">' + esc(meta) + "</td>";
+    tb.appendChild(tr);
+
+    if (e.type === "shot" && e.blob) {
+      var fig = document.createElement("div");
+      fig.className = "shot";
+      var img = document.createElement("img");
+      img.loading = "lazy";
+      img.src = "/blob/" + e.blob + "?token=" + encodeURIComponent(S.token);
+      img.alt = e.ts;
+      var cap = document.createElement("div");
+      cap.className = "cap";
+      cap.innerHTML = "<span>" + esc(fmtTime(e.ts)) + "</span><span>" + esc(e.process) + "</span>";
+      fig.appendChild(img);
+      fig.appendChild(cap);
+      fig.addEventListener("click", function () { window.open(img.src, "_blank"); });
+      shots.appendChild(fig);
+    }
+  });
+
+  if (!events.length) {
+    tb.innerHTML = '<tr><td class="empty" colspan="4">no events in this range</td></tr>';
+  }
+  if (!shots.children.length) {
+    shots.innerHTML = '<div class="empty">no screenshots in this range</div>';
+  }
+
+  $("count").textContent = events.length + " events \u00b7 " + keyTotal + " keys";
+  $("shotcount").textContent = counts.shot + "";
+  $("f-events").textContent = String(events.length);
+  $("f-window").textContent = String(counts.window || 0);
+  $("f-input").textContent = String(counts.input || 0);
+  $("f-shots").textContent = String(counts.shot || 0);
+  $("f-redacted").textContent = String(counts.redacted || 0);
+  $("f-range").textContent = events.length ? fmtDay(events[0].ts) + " " + fmtTime(events[0].ts) + " \u2192 " + fmtTime(events[events.length - 1].ts) : "\u2014";
+}
+
+function refresh() {
+  setStatus("loading");
+  return api("/api/events", {
+    machine: S.machine, type: S.type, limit: S.limit,
+    from: S.from ? new Date(S.from).toISOString() : ""
+  }).then(function (d) {
+    render(d.items);
+    var mi = S.machines[S.machine] || {};
+    var where = S.machine ? (S.machine + (mi.station ? " @ " + mi.station : "")) : "all machines";
+    setStatus(where + " \u00b7 updated " + new Date().toLocaleTimeString());
+  }).catch(function (err) {
+    if (String(err.message) === "unauthorized") { signOut("token rejected"); return; }
+    setStatus("error: " + err.message);
+  });
+}
+
+function signOut(reason) {
+  if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  localStorage.removeItem("em_token");
+  $("main").style.display = "none";
+  $("controls").style.display = "none";
+  $("foot").style.display = "none";
+  $("gate").style.display = "flex";
+  $("gateerr").textContent = reason || "";
+}
+
+function connect(token) {
+  S.token = token;
+  $("gateerr").textContent = "";
+  loadMachines().then(function () {
+    localStorage.setItem("em_token", S.token);
+    $("gate").style.display = "none";
+    $("main").style.display = "grid";
+    $("controls").style.display = "flex";
+    $("foot").style.display = "flex";
+    return refresh();
+  }).catch(function () {
+    S.token = "";
+    $("gateerr").textContent = "unauthorized - check the admin token";
+  });
+}
+
+$("connect").addEventListener("click", function () { connect($("token").value.trim()); });
+$("token").addEventListener("keydown", function (e) { if (e.key === "Enter") connect($("token").value.trim()); });
+$("machine").addEventListener("change", function () { S.machine = this.value; refresh(); });
+$("type").addEventListener("change", function () { S.type = this.value; refresh(); });
+$("limit").addEventListener("change", function () { S.limit = Number(this.value); refresh(); });
+$("from").addEventListener("change", function () { S.from = this.value; refresh(); });
+$("refresh").addEventListener("click", refresh);
+$("signout").addEventListener("click", function () { signOut(""); });
+$("export").addEventListener("click", function () {
+  window.open("/api/export?" + q({ machine: S.machine, type: S.type, from: S.from ? new Date(S.from).toISOString() : "" }), "_blank");
+});
+$("autos").addEventListener("click", function () {
+  if (S.timer) { clearInterval(S.timer); S.timer = null; this.classList.remove("on"); setStatus("auto off"); return; }
+  this.classList.add("on");
+  setStatus("auto on (10s)");
+  S.timer = setInterval(refresh, 10000);
+});
+
+var saved = localStorage.getItem("em_token");
+if (saved) connect(saved);
+</script>
+</body>
+</html>
