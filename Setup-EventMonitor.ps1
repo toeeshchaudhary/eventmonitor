@@ -83,6 +83,25 @@ function Get-LanIp {
     return '127.0.0.1'
 }
 
+# Local subnet in CIDR form, e.g. 192.168.1.0/24, for the interface that has the
+# default gateway. Used to scope the firewall rule.
+function Get-LocalSubnet {
+    $cfg = Get-NetIPConfiguration -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPv4Address -and $_.IPv4DefaultGateway } | Select-Object -First 1
+    if (-not $cfg) { return $null }
+    $bytes = ([System.Net.IPAddress]::Parse($cfg.IPv4Address.IPAddress)).GetAddressBytes()
+    $len = [int]$cfg.IPv4Address.PrefixLength
+    $net = New-Object byte[] 4
+    for ($i = 0; $i -lt 4; $i++) {
+        $bits = ($i + 1) * 8
+        if ($len -ge $bits) { $m = 255 }
+        elseif ($len -le ($i * 8)) { $m = 0 }
+        else { $m = [byte](256 - [math]::Pow(2, $bits - $len)) }
+        $net[$i] = $bytes[$i] -band $m
+    }
+    return ('{0}/{1}' -f (($net | ForEach-Object { $_ }) -join '.'), $len)
+}
+
 function Resolve-Bun {
     $cmd = Get-Command bun -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
@@ -171,10 +190,23 @@ function Start-CollectorRole {
                 if ($existing) {
                     Add-EMLog -Message ("firewall rule already present for port {0}" -f $Port)
                 } else {
-                    New-NetFirewallRule -DisplayName ("EventMonitor collector {0}" -f $Port) `
-                        -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port `
-                        -Profile Private -Description 'EventMonitor agent ingest (LAN only)' | Out-Null
-                    Add-EMLog -Message ("firewall rule added for TCP {0} (Private profile)" -f $Port)
+                    # Scope by source subnet rather than trusting Windows' network
+                    # category. A school/campus LAN is usually classified "Public",
+                    # and a Private-profile rule would then silently never apply
+                    # while looking perfectly correct in the firewall UI.
+                    $subnet = Get-LocalSubnet
+                    $ruleArgs = @{
+                        DisplayName = ("EventMonitor collector {0}" -f $Port)
+                        Direction   = 'Inbound'
+                        Action      = 'Allow'
+                        Protocol    = 'TCP'
+                        LocalPort   = $Port
+                        Profile     = 'Any'
+                        Description = 'EventMonitor agent ingest (scoped to the local subnet)'
+                    }
+                    if ($subnet) { $ruleArgs['RemoteAddress'] = $subnet }
+                    New-NetFirewallRule @ruleArgs | Out-Null
+                    Add-EMLog -Message ("firewall rule added for TCP {0}, remote {1} (any profile)" -f $Port, $(if ($subnet) { $subnet } else { 'ANY - scope it manually!' }))
                 }
             } catch {
                 Add-EMLog -Level 'warn' -Message "could not add firewall rule: $_"
