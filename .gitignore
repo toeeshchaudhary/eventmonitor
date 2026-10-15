@@ -16,3 +16,6 @@ nul
 .idea/
 Thumbs.db
 desktop.ini
+
+# live config holds real tokens - never commit it
+collector/collector.json
